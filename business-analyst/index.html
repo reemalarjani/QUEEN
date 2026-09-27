@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>محلل الأعمال</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1b2433;
+      --muted: #637083;
+      --accent: #2563eb;
+      --accent-soft: #e3ecff;
+      --good: #1f9d55;
+      --bad: #d64545;
+      --border: #dde4ef;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11161f;
+        --card: #1c2330;
+        --text: #eef2f8;
+        --muted: #9aa6b8;
+        --accent: #6f9bff;
+        --accent-soft: #24304a;
+        --border: #2d3748;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header { padding: 20px 16px 8px; text-align: center; }
+    header h1 { margin: 0; font-size: 1.8rem; }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    main { max-width: 760px; margin: 0 auto; padding: 16px; }
+    h3.section { margin: 24px 0 10px; font-size: 1.1rem; color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      transition: transform .12s, border-color .12s;
+    }
+    .tile:hover, .tile:focus-visible { transform: translateY(-2px); border-color: var(--accent); outline: none; }
+    .tile .big { font-size: 2.2rem; display: block; }
+    .tile .title { font-weight: 700; display: block; margin-top: 6px; }
+    .tile .sub { color: var(--muted); font-size: .9rem; display: block; }
+    .bar { height: 6px; background: var(--accent-soft); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--accent); }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar h2 { margin: 0; font-size: 1.3rem; flex: 1; }
+    button.btn {
+      font: inherit;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.btn:disabled { opacity: .5; cursor: default; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 20px;
+      text-align: center;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .card .word { font-size: 2rem; font-weight: 700; }
+    .card .def { font-size: 1.15rem; }
+    .en { direction: ltr; unicode-bidi: isolate; color: var(--muted); }
+    .card .hint { color: var(--muted); font-size: .9rem; }
+    .row { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .counter { text-align: center; color: var(--muted); margin-top: 10px; }
+    .options { display: grid; gap: 10px; margin-top: 16px; }
+    .options button {
+      font: inherit;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      text-align: start;
+    }
+    .options button.correct { border-color: var(--good); background: color-mix(in srgb, var(--good) 15%, var(--card)); }
+    .options button.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, var(--card)); }
+    .result { text-align: center; }
+    .result .score { font-size: 3rem; font-weight: 800; color: var(--accent); }
+    .known { color: var(--good); font-weight: 700; }
+    .gloss { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+    .gloss b { display: block; }
+    .gloss p { margin: 4px 0 0; }
+    /* الأدوات */
+    .swot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) { .swot { grid-template-columns: 1fr; } }
+    .quad { background: var(--card); border: 1px solid var(--border); border-top: 4px solid var(--c); border-radius: 12px; padding: 12px; }
+    .quad h4 { margin: 0 0 6px; }
+    .quad ul { margin: 0 0 8px; padding-inline-start: 20px; min-height: 24px; }
+    .quad li { margin: 2px 0; }
+    .quad li button, .story button.del { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; }
+    .add { display: flex; gap: 6px; }
+    input, select, textarea {
+      font: inherit;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      width: 100%;
+      min-width: 0;
+    }
+    label { display: block; font-weight: 600; margin: 10px 0 4px; }
+    .form { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .preview { background: var(--accent-soft); border-radius: 10px; padding: 12px; margin-top: 12px; }
+    .story { background: var(--card); border: 1px solid var(--border); border-inline-start: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; margin-top: 10px; display: flex; gap: 8px; align-items: flex-start; }
+    .story .body { flex: 1; }
+    .tag { display: inline-block; font-size: .8rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--c); color: #fff; }
+    footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>💼 محلل الأعمال</h1>
+    <p>تعلّم مفاهيم تحليل الأعمال وتدرّب على أدواته العملية</p>
+  </header>
+  <main id="app"></main>
+  <footer>انقر على البطاقة لقلبها • يُحفظ تقدّمك وعملك في متصفحك • <a href="../">الرئيسية</a></footer>
+
+  <script src="data.js"></script>
+  <script>
+    const app = document.getElementById("app");
+    const state = { topic: null, index: 0, flipped: false, quiz: null };
+
+    // ---------- حفظ البيانات ----------
+    function load(name, fallback) {
+      try { return JSON.parse(localStorage.getItem(name)) || fallback; }
+      catch (e) { return fallback; }
+    }
+    function save(name, value) {
+      try { localStorage.setItem(name, JSON.stringify(value)); } catch (e) {}
+    }
+    const progress = load("baProgress", {});
+    const key = (topic, en) => `${topic}|${en}`;
+    const isKnown = (topic, en) => !!progress[key(topic, en)];
+    function setKnown(topic, en, value) {
+      if (value) progress[key(topic, en)] = true;
+      else delete progress[key(topic, en)];
+      save("baProgress", progress);
+    }
+    const knownCount = topic => topic.terms.filter(t => isKnown(topic.id, t.en)).length;
+
+    // ---------- أدوات ----------
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function el(html) {
+      const t = document.createElement("template");
+      t.innerHTML = html.trim();
+      return t.content;
+    }
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    // ---------- الشاشة الرئيسية ----------
+    function renderHome() {
+      state.topic = null;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar"><h2>📚 تعلّم المفاهيم</h2></div>
+        <div class="grid" id="topics"></div>
+        <h3 class="section">🛠️ أدوات عملية</h3>
+        <div class="grid">
+          <button class="tile" id="swot"><span class="big">🧭</span><span class="title">تحليل SWOT</span><span class="sub">مصفوفة القوة والضعف والفرص والتهديدات</span></button>
+          <button class="tile" id="stories"><span class="big">🗂️</span><span class="title">قصص المستخدم</span><span class="sub">صياغة وترتيب حسب MoSCoW</span></button>
+        </div>`));
+      const grid = app.querySelector("#topics");
+      for (const topic of TOPICS) {
+        const known = knownCount(topic);
+        const btn = document.createElement("button");
+        btn.className = "tile";
+        btn.innerHTML = `<span class="big">${topic.icon}</span>
+          <span class="title">${topic.title}</span>
+          <span class="sub">${known} / ${topic.terms.length} مفهوم</span>
+          <div class="bar"><span style="width:${(known / topic.terms.length) * 100}%"></span></div>`;
+        btn.onclick = () => { state.topic = topic; renderMode(); };
+        grid.appendChild(btn);
+      }
+      app.querySelector("#swot").onclick = renderSwot;
+      app.querySelector("#stories").onclick = renderStories;
+    }
+
+    function renderMode() {
+      const topic = state.topic;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ الرئيسية</button>
+          <h2>${topic.icon} ${topic.title}</h2>
+        </div>
+        <div class="grid">
+          <button class="tile" id="learn"><span class="big">📖</span><span class="title">تعلّم</span><span class="sub">بطاقات تعليمية</span></button>
+          <button class="tile" id="quiz"><span class="big">✍️</span><span class="title">اختبر نفسك</span><span class="sub">اختيار من متعدد</span></button>
+          <button class="tile" id="list"><span class="big">📋</span><span class="title">المسرد</span><span class="sub">كل المفاهيم وتعريفاتها</span></button>
+        </div>`));
+      app.querySelector("#back").onclick = renderHome;
+      app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
+      app.querySelector("#quiz").onclick = startQuiz;
+      app.querySelector("#list").onclick = renderList;
+    }
+
+    // ---------- البطاقات ----------
+    function renderCard() {
+      const topic = state.topic;
+      const t = topic.terms[state.index];
+      const known = isKnown(topic.id, t.en);
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(topic.title)}</button>
+          <h2>📖 تعلّم</h2>
+        </div>
+        <div class="card" id="card" tabindex="0" role="button" aria-label="اقلب البطاقة">
+          ${state.flipped
+            ? `<div class="def">${esc(t.def)}</div><div class="hint">${esc(t.ar)}</div>`
+            : `<div class="word">${esc(t.ar)}</div><div class="en">${esc(t.en)}</div><div class="hint">انقر لرؤية التعريف</div>`}
+          ${known ? `<div class="known">✓ فهمته</div>` : ""}
+        </div>
+        <div class="row">
+          <button class="btn" id="prev" ${state.index === 0 ? "disabled" : ""}>السابق</button>
+          <button class="btn ${known ? "" : "primary"}" id="mark">${known ? "إلغاء" : "✓ فهمته"}</button>
+          <button class="btn" id="next" ${state.index === topic.terms.length - 1 ? "disabled" : ""}>التالي</button>
+        </div>
+        <div class="counter">${state.index + 1} / ${topic.terms.length}</div>`));
+      const flip = () => { state.flipped = !state.flipped; renderCard(); };
+      const card = app.querySelector("#card");
+      card.onclick = flip;
+      card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+      app.querySelector("#back").onclick = renderMode;
+      app.querySelector("#mark").onclick = () => { setKnown(topic.id, t.en, !known); renderCard(); };
+      app.querySelector("#prev").onclick = () => { state.index--; state.flipped = false; renderCard(); };
+      app.querySelector("#next").onclick = () => { state.index++; state.flipped = false; renderCard(); };
+    }
+
+    function renderList() {
+      const topic = state.topic;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(topic.title)}</button>
+          <h2>📋 المسرد</h2>
+        </div><div id="terms"></div>`));
+      app.querySelector("#back").onclick = renderMode;
+      const list = app.querySelector("#terms");
+      for (const t of topic.terms) {
+        list.appendChild(el(`<div class="gloss">
+          <b>${esc(t.ar)}${isKnown(topic.id, t.en) ? ` <span class="known">✓</span>` : ""}</b>
+          <span class="en">${esc(t.en)}</span>
+          <p>${esc(t.def)}</p>
+        </div>`));
+      }
+    }
+
+    // ---------- الاختبار ----------
+    function startQuiz() {
+      state.quiz = { questions: shuffle(state.topic.terms), current: 0, score: 0, answered: false };
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const q = state.quiz;
+      const topic = state.topic;
+      if (q.current >= q.questions.length) return renderResult();
+      const t = q.questions[q.current];
+      const distractors = shuffle(topic.terms.filter(x => x !== t)).slice(0, 3);
+      const choices = shuffle([t, ...distractors]);
+      q.answered = false;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(topic.title)}</button>
+          <h2>✍️ اختبر نفسك</h2>
+        </div>
+        <div class="card" style="cursor:default; min-height:160px">
+          <div class="hint">ما المفهوم الذي ينطبق عليه هذا التعريف؟</div>
+          <div class="def">${esc(t.def)}</div>
+        </div>
+        <div class="options" id="opts"></div>
+        <div class="row"><button class="btn primary" id="next" hidden>التالي</button></div>
+        <div class="counter">السؤال ${q.current + 1} / ${q.questions.length} • النتيجة: ${q.score}</div>`));
+      app.querySelector("#back").onclick = renderMode;
+      const opts = app.querySelector("#opts");
+      const nextBtn = app.querySelector("#next");
+      const buttons = [];
+      for (const choice of choices) {
+        const b = document.createElement("button");
+        b.innerHTML = `${esc(choice.ar)}<span class="en" style="display:block;text-align:end;font-size:.9rem">${esc(choice.en)}</span>`;
+        b.onclick = () => {
+          if (q.answered) return;
+          q.answered = true;
+          const right = choice === t;
+          if (right) { q.score++; setKnown(topic.id, t.en, true); }
+          buttons[choices.indexOf(t)].classList.add("correct");
+          if (!right) b.classList.add("wrong");
+          nextBtn.hidden = false;
+          nextBtn.focus();
+        };
+        buttons.push(b);
+        opts.appendChild(b);
+      }
+      nextBtn.onclick = () => { q.current++; renderQuestion(); };
+    }
+
+    function renderResult() {
+      const q = state.quiz;
+      const pct = Math.round((q.score / q.questions.length) * 100);
+      const msg = pct === 100 ? "ممتاز! 🎉" : pct >= 70 ? "أحسنت! 👏" : pct >= 40 ? "جيد، استمر في التدريب 💪" : "لا بأس، راجع البطاقات وحاول مرة أخرى 📖";
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="card result" style="cursor:default">
+          <div class="score">${q.score} / ${q.questions.length}</div>
+          <div class="word" style="font-size:1.5rem">${msg}</div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="again">أعد الاختبار</button>
+          <button class="btn" id="learn">راجع البطاقات</button>
+          <button class="btn" id="home">الرئيسية</button>
+        </div>`));
+      app.querySelector("#again").onclick = startQuiz;
+      app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
+      app.querySelector("#home").onclick = renderHome;
+    }
+
+    // ---------- أداة SWOT ----------
+    const SWOT = [
+      { id: "s", title: "نقاط القوة", en: "Strengths", hint: "داخلية • إيجابية", color: "#1f9d55" },
+      { id: "w", title: "نقاط الضعف", en: "Weaknesses", hint: "داخلية • سلبية", color: "#d64545" },
+      { id: "o", title: "الفرص", en: "Opportunities", hint: "خارجية • إيجابية", color: "#2563eb" },
+      { id: "t", title: "التهديدات", en: "Threats", hint: "خارجية • سلبية", color: "#d97706" }
+    ];
+    const swot = load("baSwot", { subject: "", s: [], w: [], o: [], t: [] });
+
+    function renderSwot() {
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ الرئيسية</button>
+          <h2>🧭 تحليل SWOT</h2>
+          <button class="btn" id="clear">مسح الكل</button>
+        </div>
+        <label for="subject">موضوع التحليل (مشروع، منتج، شركة...)</label>
+        <input id="subject" placeholder="مثال: إطلاق تطبيق توصيل" value="${esc(swot.subject)}">
+        <div class="swot" id="grid" style="margin-top:12px"></div>`));
+      app.querySelector("#back").onclick = renderHome;
+      app.querySelector("#subject").oninput = e => { swot.subject = e.target.value; save("baSwot", swot); };
+      app.querySelector("#clear").onclick = () => {
+        if (!confirm("هل تريد مسح جميع عناصر التحليل؟")) return;
+        swot.subject = ""; for (const q of SWOT) swot[q.id] = [];
+        save("baSwot", swot); renderSwot();
+      };
+      const grid = app.querySelector("#grid");
+      for (const quad of SWOT) {
+        const box = document.createElement("div");
+        box.className = "quad";
+        box.style.setProperty("--c", quad.color);
+        box.innerHTML = `<h4>${quad.title} <span class="en">${quad.en}</span></h4>
+          <div class="hint" style="color:var(--muted);font-size:.85rem">${quad.hint}</div>
+          <ul>${swot[quad.id].map((item, i) => `<li>${esc(item)} <button data-i="${i}" aria-label="حذف">✕</button></li>`).join("")}</ul>
+          <form class="add"><input placeholder="أضف عنصرًا..." required><button class="btn">+</button></form>`;
+        box.querySelectorAll("li button").forEach(b => b.onclick = () => {
+          swot[quad.id].splice(+b.dataset.i, 1); save("baSwot", swot); renderSwot();
+        });
+        box.querySelector("form").onsubmit = e => {
+          e.preventDefault();
+          const input = e.target.querySelector("input");
+          const value = input.value.trim();
+          if (!value) return;
+          swot[quad.id].push(value); save("baSwot", swot); renderSwot();
+          app.querySelectorAll(".quad")[SWOT.indexOf(quad)].querySelector("input").focus();
+        };
+        grid.appendChild(box);
+      }
+    }
+
+    // ---------- أداة قصص المستخدم ----------
+    const MOSCOW = [
+      { id: "must", title: "يجب", en: "Must have", color: "#d64545" },
+      { id: "should", title: "ينبغي", en: "Should have", color: "#d97706" },
+      { id: "could", title: "يمكن", en: "Could have", color: "#2563eb" },
+      { id: "wont", title: "ليس الآن", en: "Won't have", color: "#637083" }
+    ];
+    const stories = load("baStories", []);
+
+    function renderStories() {
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ الرئيسية</button>
+          <h2>🗂️ قصص المستخدم</h2>
+        </div>
+        <form class="form" id="form">
+          <label for="role">بصفتي...</label>
+          <input id="role" placeholder="مثال: عميل" required>
+          <label for="goal">أريد أن...</label>
+          <input id="goal" placeholder="مثال: أتتبع طلبي لحظة بلحظة" required>
+          <label for="benefit">لكي...</label>
+          <input id="benefit" placeholder="مثال: أعرف متى يصل الطلب" required>
+          <label for="criteria">معايير القبول (سطر لكل معيار)</label>
+          <textarea id="criteria" rows="3" placeholder="بافتراض أن لدي طلبًا نشطًا، عندما أفتح صفحة الطلب، فإنني أرى موقع المندوب"></textarea>
+          <label for="priority">الأولوية (MoSCoW)</label>
+          <select id="priority">${MOSCOW.map(m => `<option value="${m.id}">${m.title} — ${m.en}</option>`).join("")}</select>
+          <div class="preview" id="preview"></div>
+          <div class="row"><button class="btn primary">إضافة القصة</button></div>
+        </form>
+        <div id="list"></div>`));
+      app.querySelector("#back").onclick = renderHome;
+      const form = app.querySelector("#form");
+      const f = id => form.querySelector("#" + id);
+      const sentence = (r, g, b) => `بصفتي <b>${esc(r || "...")}</b>، أريد أن <b>${esc(g || "...")}</b>، لكي <b>${esc(b || "...")}</b>.`;
+      const updatePreview = () => { f("preview").innerHTML = sentence(f("role").value.trim(), f("goal").value.trim(), f("benefit").value.trim()); };
+      form.oninput = updatePreview;
+      updatePreview();
+      form.onsubmit = e => {
+        e.preventDefault();
+        stories.push({
+          role: f("role").value.trim(), goal: f("goal").value.trim(), benefit: f("benefit").value.trim(),
+          criteria: f("criteria").value.split("\n").map(s => s.trim()).filter(Boolean),
+          priority: f("priority").value
+        });
+        save("baStories", stories);
+        renderStories();
+      };
+      const list = app.querySelector("#list");
+      if (!stories.length) {
+        list.appendChild(el(`<p class="counter">لا توجد قصص بعد. أضف أول قصة مستخدم!</p>`));
+        return;
+      }
+      for (const m of MOSCOW) {
+        const group = stories.map((s, i) => ({ s, i })).filter(x => x.s.priority === m.id);
+        if (!group.length) continue;
+        list.appendChild(el(`<h3 class="section">${m.title} • <span class="en">${m.en}</span> • ${group.length}</h3>`));
+        for (const { s, i } of group) {
+          const card = document.createElement("div");
+          card.className = "story";
+          card.style.setProperty("--c", m.color);
+          card.innerHTML = `<div class="body">
+              <span class="tag">${m.title}</span>
+              <div>${sentence(s.role, s.goal, s.benefit)}</div>
+              ${s.criteria.length ? `<ul style="margin:6px 0 0;color:var(--muted)">${s.criteria.map(c => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}
+            </div>
+            <button class="del" aria-label="حذف">✕</button>`;
+          card.querySelector(".del").onclick = () => { stories.splice(i, 1); save("baStories", stories); renderStories(); };
+          list.appendChild(card);
+        }
+      }
+    }
+
+    renderHome();
+  </script>
+</body>
+</html>
