@@ -111,6 +111,9 @@
     .options button.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, var(--card)); }
     .result { text-align: center; }
     .result .score { font-size: 3rem; font-weight: 800; color: var(--accent); }
+    .level-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 20px 0 10px; }
+    .level-head .sub { color: var(--muted); font-size: .9rem; }
+    .badge { background: var(--accent); color: #fff; border-radius: 6px; padding: 0 8px; font-weight: 700; direction: ltr; }
     .known { color: var(--good); font-weight: 700; }
     footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 16px; }
   </style>
@@ -199,19 +202,29 @@
       app.appendChild(el(`<div class="toolbar">
           <button class="btn" id="back">→ اللغات</button>
           <h2>${info.flag} ${info.name}: اختر موضوعًا</h2>
-        </div><div class="grid" id="cats"></div>`));
+        </div><div id="levels"></div>`));
       app.querySelector("#back").onclick = renderLanguages;
-      const grid = app.querySelector("#cats");
-      for (const cat of CATEGORIES) {
-        const known = knownCount(state.lang, cat);
-        const btn = document.createElement("button");
-        btn.className = "tile";
-        btn.innerHTML = `<span class="big">${cat.icon}</span>
-          <span class="title">${cat.title}</span>
-          <span class="sub">${known} / ${cat.words.length} محفوظة</span>
-          <div class="bar"><span style="width:${(known / cat.words.length) * 100}%"></span></div>`;
-        btn.onclick = () => { state.category = cat; renderMode(); };
-        grid.appendChild(btn);
+      const levels = app.querySelector("#levels");
+      for (const level of LEVELS) {
+        levels.appendChild(el(`<div class="level-head">
+            <span class="badge">${level.id}</span>
+            <strong>${level.title}</strong>
+            <span class="sub">${level.desc}</span>
+          </div>`));
+        const grid = document.createElement("div");
+        grid.className = "grid";
+        levels.appendChild(grid);
+        for (const cat of CATEGORIES.filter(c => c.level === level.id)) {
+          const known = knownCount(state.lang, cat);
+          const btn = document.createElement("button");
+          btn.className = "tile";
+          btn.innerHTML = `<span class="big">${cat.icon}</span>
+            <span class="title">${cat.title}</span>
+            <span class="sub">${known} / ${cat.words.length} محفوظة</span>
+            <div class="bar"><span style="width:${(known / cat.words.length) * 100}%"></span></div>`;
+          btn.onclick = () => { state.category = cat; renderMode(); };
+          grid.appendChild(btn);
+        }
       }
     }
 

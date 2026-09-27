@@ -2,7 +2,7 @@
 
 ### 🌍 [تعلّم اللغات](languages/)
 
-تطبيق بسيط لتعلّم كلمات وعبارات بالإنجليزية والفرنسية والإسبانية والتركية والألمانية والإيطالية عبر بطاقات تعليمية واختبارات قصيرة.
+تطبيق بسيط لتعلّم كلمات وعبارات بالإنجليزية والفرنسية والإسبانية والتركية والألمانية والإيطالية عبر بطاقات تعليمية واختبارات قصيرة، في مستويين: مبتدئ (A1) ومتقدم (B2).
 
 You can use the [editor on GitHub](https://github.com/reemalarjani/QUEEN/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
 
