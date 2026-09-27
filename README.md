@@ -4,6 +4,10 @@
 
 تطبيق بسيط لتعلّم كلمات وعبارات بالإنجليزية والفرنسية والإسبانية والتركية والألمانية والإيطالية عبر بطاقات تعليمية واختبارات قصيرة.
 
+### 💼 [محلل الأعمال](business-analyst/)
+
+صفحة لتعلّم مفاهيم تحليل الأعمال (المتطلبات، جمع المتطلبات، أدوات التحليل، النمذجة، المنهجية الرشيقة، الوثائق) عبر بطاقات واختبارات ومسرد، مع أدوات عملية: مصفوفة SWOT وكاتب قصص المستخدم بترتيب MoSCoW.
+
 You can use the [editor on GitHub](https://github.com/reemalarjani/QUEEN/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
