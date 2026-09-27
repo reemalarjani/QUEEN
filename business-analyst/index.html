@@ -195,6 +195,11 @@
       app.innerHTML = "";
       app.appendChild(el(`<div class="toolbar"><h2>📚 تعلّم المفاهيم</h2></div>
         <div class="grid" id="topics"></div>
+        <h3 class="section">🏆 الاختبارات</h3>
+        <div class="grid">
+          <button class="tile" id="exam"><span class="big">🏆</span><span class="title">الاختبار الشامل</span><span class="sub">20 سؤالًا من كل المواضيع</span><span class="sub">${bestText("exam")}</span></button>
+          <button class="tile" id="scenarios"><span class="big">💡</span><span class="title">مواقف عملية</span><span class="sub">10 أسئلة تطبيقية مع الشرح</span><span class="sub">${bestText("scenarios")}</span></button>
+        </div>
         <h3 class="section">🛠️ أدوات عملية</h3>
         <div class="grid">
           <button class="tile" id="swot"><span class="big">🧭</span><span class="title">تحليل SWOT</span><span class="sub">مصفوفة القوة والضعف والفرص والتهديدات</span></button>
@@ -212,6 +217,8 @@
         btn.onclick = () => { state.topic = topic; renderMode(); };
         grid.appendChild(btn);
       }
+      app.querySelector("#exam").onclick = () => startQuiz("exam");
+      app.querySelector("#scenarios").onclick = () => startQuiz("scenarios");
       app.querySelector("#swot").onclick = renderSwot;
       app.querySelector("#stories").onclick = renderStories;
     }
@@ -225,12 +232,14 @@
         </div>
         <div class="grid">
           <button class="tile" id="learn"><span class="big">📖</span><span class="title">تعلّم</span><span class="sub">بطاقات تعليمية</span></button>
-          <button class="tile" id="quiz"><span class="big">✍️</span><span class="title">اختبر نفسك</span><span class="sub">اختيار من متعدد</span></button>
+          <button class="tile" id="quiz"><span class="big">✍️</span><span class="title">ما المفهوم؟</span><span class="sub">من التعريف إلى المصطلح</span><span class="sub">${bestText(`def|${topic.id}`)}</span></button>
+          <button class="tile" id="quiz2"><span class="big">🔎</span><span class="title">ما التعريف؟</span><span class="sub">من المصطلح إلى التعريف</span><span class="sub">${bestText(`term|${topic.id}`)}</span></button>
           <button class="tile" id="list"><span class="big">📋</span><span class="title">المسرد</span><span class="sub">كل المفاهيم وتعريفاتها</span></button>
         </div>`));
       app.querySelector("#back").onclick = renderHome;
       app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
-      app.querySelector("#quiz").onclick = startQuiz;
+      app.querySelector("#quiz").onclick = () => startQuiz("topicDef");
+      app.querySelector("#quiz2").onclick = () => startQuiz("topicTerm");
       app.querySelector("#list").onclick = renderList;
     }
 
@@ -284,71 +293,137 @@
       }
     }
 
-    // ---------- الاختبار ----------
-    function startQuiz() {
-      state.quiz = { questions: shuffle(state.topic.terms), current: 0, score: 0, answered: false };
+    // ---------- الاختبارات ----------
+    // كل سؤال: { prompt, hint, choices: [html], answer, explain?, onRight? }
+    const best = load("baBest", {});
+    const bestText = id => best[id] != null ? `أفضل نتيجة: ${best[id]}٪` : "لم تُختبر بعد";
+    const termHtml = t => `${esc(t.ar)}<span class="en" style="display:block;text-align:end;font-size:.9rem">${esc(t.en)}</span>`;
+    const allTerms = () => TOPICS.flatMap(topic => topic.terms.map(t => ({ ...t, topic })));
+
+    function defQuestion(t, pool, topicId) {
+      const choices = shuffle([t, ...shuffle(pool.filter(x => x.en !== t.en)).slice(0, 3)]);
+      return {
+        hint: "ما المفهوم الذي ينطبق عليه هذا التعريف؟",
+        prompt: `<div class="def">${esc(t.def)}</div>`,
+        choices: choices.map(termHtml),
+        answer: choices.indexOf(t),
+        onRight: () => setKnown(topicId, t.en, true)
+      };
+    }
+    function termQuestion(t, pool, topicId) {
+      const choices = shuffle([t, ...shuffle(pool.filter(x => x.en !== t.en)).slice(0, 3)]);
+      return {
+        hint: "اختر التعريف الصحيح لهذا المفهوم",
+        prompt: `<div class="word" style="font-size:1.6rem">${esc(t.ar)}</div><div class="en">${esc(t.en)}</div>`,
+        choices: choices.map(c => esc(c.def)),
+        answer: choices.indexOf(t),
+        onRight: () => setKnown(topicId, t.en, true)
+      };
+    }
+    function scenarioQuestion(s) {
+      const order = shuffle(s.options.map((_, i) => i));
+      return {
+        hint: "موقف عملي",
+        prompt: `<div class="def">${esc(s.q)}</div>`,
+        choices: order.map(i => esc(s.options[i])),
+        answer: order.indexOf(s.answer),
+        explain: s.explain
+      };
+    }
+
+    const QUIZZES = {
+      topicDef: () => ({
+        id: `def|${state.topic.id}`, title: "✍️ ما المفهوم؟", backLabel: state.topic.title, back: renderMode,
+        questions: shuffle(state.topic.terms).map(t => defQuestion(t, state.topic.terms, state.topic.id))
+      }),
+      topicTerm: () => ({
+        id: `term|${state.topic.id}`, title: "🔎 ما التعريف؟", backLabel: state.topic.title, back: renderMode,
+        questions: shuffle(state.topic.terms).map(t => termQuestion(t, state.topic.terms, state.topic.id))
+      }),
+      exam: () => {
+        const pool = allTerms();
+        return {
+          id: "exam", title: "🏆 الاختبار الشامل", backLabel: "الرئيسية", back: renderHome,
+          questions: shuffle(pool).slice(0, 20).map((t, i) =>
+            (i % 2 ? termQuestion : defQuestion)(t, pool.filter(x => x.topic === t.topic), t.topic.id))
+        };
+      },
+      scenarios: () => ({
+        id: "scenarios", title: "💡 مواقف عملية", backLabel: "الرئيسية", back: renderHome,
+        questions: shuffle(SCENARIOS).slice(0, 10).map(scenarioQuestion)
+      })
+    };
+
+    function startQuiz(kind) {
+      state.quiz = { kind, ...QUIZZES[kind](), current: 0, score: 0 };
       renderQuestion();
     }
 
     function renderQuestion() {
       const q = state.quiz;
-      const topic = state.topic;
       if (q.current >= q.questions.length) return renderResult();
-      const t = q.questions[q.current];
-      const distractors = shuffle(topic.terms.filter(x => x !== t)).slice(0, 3);
-      const choices = shuffle([t, ...distractors]);
-      q.answered = false;
+      const item = q.questions[q.current];
+      let answered = false;
       app.innerHTML = "";
       app.appendChild(el(`<div class="toolbar">
-          <button class="btn" id="back">→ ${esc(topic.title)}</button>
-          <h2>✍️ اختبر نفسك</h2>
+          <button class="btn" id="back">→ ${esc(q.backLabel)}</button>
+          <h2>${q.title}</h2>
         </div>
+        <div class="bar" style="margin:0 0 12px"><span style="width:${(q.current / q.questions.length) * 100}%"></span></div>
         <div class="card" style="cursor:default; min-height:160px">
-          <div class="hint">ما المفهوم الذي ينطبق عليه هذا التعريف؟</div>
-          <div class="def">${esc(t.def)}</div>
+          <div class="hint">${item.hint}</div>
+          ${item.prompt}
         </div>
         <div class="options" id="opts"></div>
-        <div class="row"><button class="btn primary" id="next" hidden>التالي</button></div>
+        <div class="preview" id="explain" hidden></div>
+        <div class="row"><button class="btn primary" id="next" hidden>${q.current === q.questions.length - 1 ? "النتيجة" : "التالي"}</button></div>
         <div class="counter">السؤال ${q.current + 1} / ${q.questions.length} • النتيجة: ${q.score}</div>`));
-      app.querySelector("#back").onclick = renderMode;
+      app.querySelector("#back").onclick = q.back;
       const opts = app.querySelector("#opts");
       const nextBtn = app.querySelector("#next");
-      const buttons = [];
-      for (const choice of choices) {
+      const buttons = item.choices.map((html, i) => {
         const b = document.createElement("button");
-        b.innerHTML = `${esc(choice.ar)}<span class="en" style="display:block;text-align:end;font-size:.9rem">${esc(choice.en)}</span>`;
+        b.innerHTML = html;
         b.onclick = () => {
-          if (q.answered) return;
-          q.answered = true;
-          const right = choice === t;
-          if (right) { q.score++; setKnown(topic.id, t.en, true); }
-          buttons[choices.indexOf(t)].classList.add("correct");
+          if (answered) return;
+          answered = true;
+          const right = i === item.answer;
+          if (right) { q.score++; item.onRight && item.onRight(); }
+          buttons[item.answer].classList.add("correct");
           if (!right) b.classList.add("wrong");
+          if (item.explain) {
+            const ex = app.querySelector("#explain");
+            ex.innerHTML = `<b>${right ? "✓ إجابة صحيحة" : "✗ إجابة خاطئة"}</b><br>${esc(item.explain)}`;
+            ex.hidden = false;
+          }
           nextBtn.hidden = false;
           nextBtn.focus();
         };
-        buttons.push(b);
         opts.appendChild(b);
-      }
+        return b;
+      });
       nextBtn.onclick = () => { q.current++; renderQuestion(); };
     }
 
     function renderResult() {
       const q = state.quiz;
       const pct = Math.round((q.score / q.questions.length) * 100);
-      const msg = pct === 100 ? "ممتاز! 🎉" : pct >= 70 ? "أحسنت! 👏" : pct >= 40 ? "جيد، استمر في التدريب 💪" : "لا بأس، راجع البطاقات وحاول مرة أخرى 📖";
+      const isBest = best[q.id] == null || pct > best[q.id];
+      if (isBest) { best[q.id] = pct; save("baBest", best); }
+      const msg = pct === 100 ? "ممتاز! 🎉" : pct >= 70 ? "أحسنت! 👏" : pct >= 40 ? "جيد، استمر في التدريب 💪" : "لا بأس، راجع المفاهيم وحاول مرة أخرى 📖";
       app.innerHTML = "";
       app.appendChild(el(`<div class="card result" style="cursor:default">
           <div class="score">${q.score} / ${q.questions.length}</div>
           <div class="word" style="font-size:1.5rem">${msg}</div>
+          <div class="hint">${isBest ? "🏅 أفضل نتيجة لك في هذا الاختبار!" : `أفضل نتيجة لك: ${best[q.id]}٪`}</div>
         </div>
         <div class="row">
           <button class="btn primary" id="again">أعد الاختبار</button>
-          <button class="btn" id="learn">راجع البطاقات</button>
+          ${q.back === renderHome ? "" : `<button class="btn" id="back">${esc(q.backLabel)}</button>`}
           <button class="btn" id="home">الرئيسية</button>
         </div>`));
-      app.querySelector("#again").onclick = startQuiz;
-      app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
+      app.querySelector("#again").onclick = () => startQuiz(q.kind);
+      if (q.back !== renderHome) app.querySelector("#back").onclick = q.back;
       app.querySelector("#home").onclick = renderHome;
     }
 
