@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>تعلّم اللغات</title>
+  <style>
+    :root {
+      --bg: #f6f4fb;
+      --card: #ffffff;
+      --text: #1f1b2e;
+      --muted: #6b6680;
+      --accent: #7c4dff;
+      --accent-soft: #ede7ff;
+      --good: #1f9d55;
+      --bad: #d64545;
+      --border: #e3def0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16131f;
+        --card: #221e2e;
+        --text: #f1eefa;
+        --muted: #a39fb6;
+        --accent: #a58bff;
+        --accent-soft: #2f2847;
+        --border: #362f48;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      padding: 20px 16px 8px;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-size: 1.8rem; }
+    header p { margin: 4px 0 0; color: var(--muted); }
+    main { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      transition: transform .12s, border-color .12s;
+    }
+    .tile:hover, .tile:focus-visible { transform: translateY(-2px); border-color: var(--accent); outline: none; }
+    .tile .big { font-size: 2.2rem; display: block; }
+    .tile .title { font-weight: 700; display: block; margin-top: 6px; }
+    .tile .sub { color: var(--muted); font-size: .9rem; display: block; }
+    .bar { height: 6px; background: var(--accent-soft); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--accent); }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar h2 { margin: 0; font-size: 1.3rem; flex: 1; }
+    button.btn {
+      font: inherit;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.btn:disabled { opacity: .5; cursor: default; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 20px;
+      text-align: center;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .card .word { font-size: 2.2rem; font-weight: 700; }
+    .card .foreign { direction: ltr; }
+    .card .hint { color: var(--muted); font-size: .9rem; }
+    .row { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .counter { text-align: center; color: var(--muted); margin-top: 10px; }
+    .options { display: grid; gap: 10px; margin-top: 16px; }
+    .options button {
+      font: inherit;
+      direction: ltr;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .options button.correct { border-color: var(--good); background: color-mix(in srgb, var(--good) 15%, var(--card)); }
+    .options button.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 15%, var(--card)); }
+    .result { text-align: center; }
+    .result .score { font-size: 3rem; font-weight: 800; color: var(--accent); }
+    .known { color: var(--good); font-weight: 700; }
+    footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 24px 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌍 تعلّم اللغات</h1>
+    <p>بطاقات تعليمية واختبارات قصيرة لتعلّم كلمات وعبارات جديدة</p>
+  </header>
+  <main id="app"></main>
+  <footer>انقر على البطاقة لقلبها • اضغط 🔊 لسماع النطق • يُحفظ تقدّمك في متصفحك</footer>
+
+  <script src="data.js"></script>
+  <script>
+    const app = document.getElementById("app");
+    const state = { lang: null, category: null, index: 0, flipped: false, quiz: null };
+
+    // ---------- حفظ التقدم ----------
+    function loadProgress() {
+      try { return JSON.parse(localStorage.getItem("langProgress")) || {}; }
+      catch (e) { return {}; }
+    }
+    function saveProgress(progress) {
+      try { localStorage.setItem("langProgress", JSON.stringify(progress)); } catch (e) {}
+    }
+    const progress = loadProgress();
+    const key = (lang, cat, ar) => `${lang}|${cat}|${ar}`;
+    const isKnown = (lang, cat, ar) => !!progress[key(lang, cat, ar)];
+    function setKnown(lang, cat, ar, value) {
+      if (value) progress[key(lang, cat, ar)] = true;
+      else delete progress[key(lang, cat, ar)];
+      saveProgress(progress);
+    }
+    function knownCount(lang, cat) {
+      return cat.words.filter(w => isKnown(lang, cat.id, w.ar)).length;
+    }
+
+    // ---------- أدوات ----------
+    function speak(text, lang) {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = LANGUAGES[lang].voice;
+      u.rate = 0.85;
+      speechSynthesis.speak(u);
+    }
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function el(html) {
+      const t = document.createElement("template");
+      t.innerHTML = html.trim();
+      return t.content;
+    }
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    // ---------- الشاشات ----------
+    function renderLanguages() {
+      state.lang = null;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar"><h2>اختر اللغة التي تريد تعلّمها</h2></div><div class="grid" id="langs"></div>`));
+      const grid = app.querySelector("#langs");
+      const total = CATEGORIES.reduce((n, c) => n + c.words.length, 0);
+      for (const [code, info] of Object.entries(LANGUAGES)) {
+        const known = CATEGORIES.reduce((n, c) => n + knownCount(code, c), 0);
+        const btn = document.createElement("button");
+        btn.className = "tile";
+        btn.innerHTML = `<span class="big">${info.flag}</span>
+          <span class="title">${info.name}</span>
+          <span class="sub" dir="ltr">${info.native}</span>
+          <span class="sub">${known} / ${total} كلمة</span>
+          <div class="bar"><span style="width:${(known / total) * 100}%"></span></div>`;
+        btn.onclick = () => { state.lang = code; renderCategories(); };
+        grid.appendChild(btn);
+      }
+    }
+
+    function renderCategories() {
+      const info = LANGUAGES[state.lang];
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ اللغات</button>
+          <h2>${info.flag} ${info.name}: اختر موضوعًا</h2>
+        </div><div class="grid" id="cats"></div>`));
+      app.querySelector("#back").onclick = renderLanguages;
+      const grid = app.querySelector("#cats");
+      for (const cat of CATEGORIES) {
+        const known = knownCount(state.lang, cat);
+        const btn = document.createElement("button");
+        btn.className = "tile";
+        btn.innerHTML = `<span class="big">${cat.icon}</span>
+          <span class="title">${cat.title}</span>
+          <span class="sub">${known} / ${cat.words.length} محفوظة</span>
+          <div class="bar"><span style="width:${(known / cat.words.length) * 100}%"></span></div>`;
+        btn.onclick = () => { state.category = cat; renderMode(); };
+        grid.appendChild(btn);
+      }
+    }
+
+    function renderMode() {
+      const cat = state.category;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ المواضيع</button>
+          <h2>${cat.icon} ${cat.title}</h2>
+        </div>
+        <div class="grid">
+          <button class="tile" id="learn"><span class="big">📖</span><span class="title">تعلّم</span><span class="sub">بطاقات تعليمية</span></button>
+          <button class="tile" id="quiz"><span class="big">✍️</span><span class="title">اختبر نفسك</span><span class="sub">اختيار من متعدد</span></button>
+          <button class="tile" id="list"><span class="big">📋</span><span class="title">قائمة الكلمات</span><span class="sub">عرض الكل</span></button>
+        </div>`));
+      app.querySelector("#back").onclick = renderCategories;
+      app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
+      app.querySelector("#quiz").onclick = startQuiz;
+      app.querySelector("#list").onclick = renderList;
+    }
+
+    function renderCard() {
+      const cat = state.category;
+      const w = cat.words[state.index];
+      const foreign = w[state.lang];
+      const known = isKnown(state.lang, cat.id, w.ar);
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(cat.title)}</button>
+          <h2>📖 تعلّم</h2>
+        </div>
+        <div class="card" id="card" tabindex="0" role="button" aria-label="اقلب البطاقة">
+          ${state.flipped
+            ? `<div class="word foreign">${esc(foreign)}</div><div class="hint">${esc(w.ar)}</div>`
+            : `<div class="word">${esc(w.ar)}</div><div class="hint">انقر لرؤية الترجمة</div>`}
+          ${known ? `<div class="known">✓ محفوظة</div>` : ""}
+        </div>
+        <div class="row">
+          <button class="btn" id="prev" ${state.index === 0 ? "disabled" : ""}>السابق</button>
+          <button class="btn" id="speak">🔊 استمع</button>
+          <button class="btn ${known ? "" : "primary"}" id="mark">${known ? "إلغاء الحفظ" : "✓ حفظتها"}</button>
+          <button class="btn" id="next" ${state.index === cat.words.length - 1 ? "disabled" : ""}>التالي</button>
+        </div>
+        <div class="counter">${state.index + 1} / ${cat.words.length}</div>`));
+      const flip = () => { state.flipped = !state.flipped; renderCard(); };
+      const card = app.querySelector("#card");
+      card.onclick = flip;
+      card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+      app.querySelector("#back").onclick = renderMode;
+      app.querySelector("#speak").onclick = () => speak(foreign, state.lang);
+      app.querySelector("#mark").onclick = () => { setKnown(state.lang, cat.id, w.ar, !known); renderCard(); };
+      app.querySelector("#prev").onclick = () => { state.index--; state.flipped = false; renderCard(); };
+      app.querySelector("#next").onclick = () => { state.index++; state.flipped = false; renderCard(); };
+    }
+
+    function renderList() {
+      const cat = state.category;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(cat.title)}</button>
+          <h2>📋 قائمة الكلمات</h2>
+        </div><div class="options" id="words"></div>`));
+      app.querySelector("#back").onclick = renderMode;
+      const list = app.querySelector("#words");
+      for (const w of cat.words) {
+        const b = document.createElement("button");
+        b.style.display = "flex";
+        b.style.justifyContent = "space-between";
+        b.innerHTML = `<span>🔊 ${esc(w[state.lang])}</span><span dir="rtl">${esc(w.ar)}${isKnown(state.lang, cat.id, w.ar) ? " ✓" : ""}</span>`;
+        b.onclick = () => speak(w[state.lang], state.lang);
+        list.appendChild(b);
+      }
+    }
+
+    // ---------- الاختبار ----------
+    function startQuiz() {
+      state.quiz = { questions: shuffle(state.category.words), current: 0, score: 0, answered: false };
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const q = state.quiz;
+      const cat = state.category;
+      if (q.current >= q.questions.length) return renderResult();
+      const w = q.questions[q.current];
+      const answer = w[state.lang];
+      const distractors = shuffle(cat.words.filter(x => x[state.lang] !== answer)).slice(0, 3).map(x => x[state.lang]);
+      const choices = shuffle([answer, ...distractors]);
+      q.answered = false;
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="toolbar">
+          <button class="btn" id="back">→ ${esc(cat.title)}</button>
+          <h2>✍️ اختبر نفسك</h2>
+        </div>
+        <div class="card" style="cursor:default">
+          <div class="hint">ما ترجمة هذه الكلمة بـ${LANGUAGES[state.lang].name}؟</div>
+          <div class="word">${esc(w.ar)}</div>
+        </div>
+        <div class="options" id="opts"></div>
+        <div class="row"><button class="btn primary" id="next" hidden>التالي</button></div>
+        <div class="counter">السؤال ${q.current + 1} / ${q.questions.length} • النتيجة: ${q.score}</div>`));
+      app.querySelector("#back").onclick = renderMode;
+      const opts = app.querySelector("#opts");
+      const nextBtn = app.querySelector("#next");
+      for (const choice of choices) {
+        const b = document.createElement("button");
+        b.textContent = choice;
+        b.onclick = () => {
+          if (q.answered) return;
+          q.answered = true;
+          const right = choice === answer;
+          if (right) { q.score++; setKnown(state.lang, cat.id, w.ar, true); }
+          for (const other of opts.children) {
+            if (other.textContent === answer) other.classList.add("correct");
+          }
+          if (!right) b.classList.add("wrong");
+          speak(answer, state.lang);
+          nextBtn.hidden = false;
+          nextBtn.focus();
+        };
+        opts.appendChild(b);
+      }
+      nextBtn.onclick = () => { q.current++; renderQuestion(); };
+    }
+
+    function renderResult() {
+      const q = state.quiz;
+      const pct = Math.round((q.score / q.questions.length) * 100);
+      const msg = pct === 100 ? "ممتاز! 🎉" : pct >= 70 ? "أحسنت! 👏" : pct >= 40 ? "جيد، استمر في التدريب 💪" : "لا بأس، راجع البطاقات وحاول مرة أخرى 📖";
+      app.innerHTML = "";
+      app.appendChild(el(`<div class="card result" style="cursor:default">
+          <div class="score">${q.score} / ${q.questions.length}</div>
+          <div class="word" style="font-size:1.5rem">${msg}</div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="again">أعد الاختبار</button>
+          <button class="btn" id="learn">راجع البطاقات</button>
+          <button class="btn" id="cats">المواضيع</button>
+        </div>`));
+      app.querySelector("#again").onclick = startQuiz;
+      app.querySelector("#learn").onclick = () => { state.index = 0; state.flipped = false; renderCard(); };
+      app.querySelector("#cats").onclick = renderCategories;
+    }
+
+    renderLanguages();
+  </script>
+</body>
+</html>
